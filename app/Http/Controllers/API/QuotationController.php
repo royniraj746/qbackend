@@ -8,13 +8,14 @@ use App\Models\Enquiry;
 use App\Models\Product;
 use App\Models\Quotation;
 use App\Models\QuotationItem;
+use App\Models\TermCondition;
 use Barryvdh\DomPDF\PDF;
 use Illuminate\Container\Attributes\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Validator;
+use Maatwebsite\Excel\Facades\Excel;
 
 
 
@@ -590,12 +591,47 @@ $totalGst += $supply_gst_amount + $erection_gst_amount;
 
     //     return response()->json($quotations);
     // }
-    public function index(Request $request)
+
+
+//     public function termConditions()
+// {
+//     return response()->json(
+//         TermCondition::select('id', 'name')
+//             ->orderBy('name')
+//             ->get()
+//     );
+// }
+
+public function updateTermCondition(
+    Request $request,
+    Quotation $quotation
+) {
+    $validated = $request->validate([
+        'term_conditions_id' => [
+            'nullable',
+            'exists:term_conditions,id',
+        ],
+    ]);
+
+    $quotation->update([
+        'term_conditions_id' => $validated['term_conditions_id'],
+    ]);
+
+    $quotation->load('termCondition');
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Term condition updated successfully.',
+        'data' => $quotation,
+    ]);
+}
+public function index(Request $request)
 {
     $query = Quotation::with([
         'enquiry.enquirycustomer.createdBy',
         'enquiry.createdBy',
-        'createdBy'
+        'createdBy',
+        'termCondition',
     ]);
 
     // Search
@@ -645,7 +681,8 @@ $totalGst += $supply_gst_amount + $erection_gst_amount;
             'items.product',
             'items.projectcategries',
             'customer',
-            'enquiry'
+            'enquiry',
+            'termCondition'
         ])->find($id);
 
         if (!$quotation) {
@@ -661,7 +698,229 @@ $totalGst += $supply_gst_amount + $erection_gst_amount;
         ]);
     }
 
+    public function showerection($id)
+    {
+        $quotation = Quotation::with([
+            'items.product',
+            'items.projectcategries',
+            'customer',
+            'enquiry',
+            'termCondition'
+        ])->find($id);
 
+        if (!$quotation) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Quotation not found'
+            ], 404);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Calculate Category Wise Supply & Erection Amount
+        |--------------------------------------------------------------------------
+        |
+        | Annexure-1 calculation:
+        |
+        | Supply Amount =
+        | (Sum of Supply Rates + Supply GST Amount) × Category Quantity
+        |
+        | Erection Amount =
+        | (Sum of Erection Rates + Erection GST Amount) × Category Quantity
+        |
+        */
+
+        $groupedItems = $quotation->items->groupBy('project_category_id');
+
+        $calculatedItems = [];
+        $totalSupplyRate = 0;
+        $totalSupplyAmount = 0;
+        $totalSupplyGST = 0;
+
+        $totalErectionRate = 0;
+        $totalErectionAmount = 0;
+        $totalErectionGST = 0;
+
+        foreach ($groupedItems as $categoryId => $items) {
+
+            $firstItem = $items->first();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Category Quantity
+            |--------------------------------------------------------------------------
+            */
+
+            $categoryQty = (float) ($firstItem->project_category_qty ?? 1);
+
+            if ($categoryQty <= 0) {
+                $categoryQty = 1;
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Supply Calculation
+            |--------------------------------------------------------------------------
+            */
+
+            $categorySupplyRate = 0;
+            $categorySupplyGST = 0;
+
+            foreach ($items as $item) {
+
+                $categorySupplyRate += (float) ($item->supply_rate ?? 0);
+
+                $categorySupplyGST += (float) (
+                    $item->supply_gst_amount ?? 0
+                );
+            }
+
+            /*
+            | Annexure-1:
+            | Supply Rate includes GST
+            */
+            $supplyRateWithGST = $categorySupplyRate + $categorySupplyGST;
+
+            /*
+            | Supply Amount = Supply Rate × Category Qty
+            */
+            $supplyAmount = $supplyRateWithGST * $categoryQty;
+
+            /*
+            |--------------------------------------------------------------------------
+            | Erection Calculation
+            |--------------------------------------------------------------------------
+            */
+
+            $categoryErectionRate = 0;
+            $categoryErectionGST = 0;
+
+            foreach ($items as $item) {
+
+                $categoryErectionRate += (float) ($item->erection_rate ?? 0);
+
+                $categoryErectionGST += (float) (
+                    $item->erection_gst_amount ?? 0
+                );
+            }
+
+            /*
+            | Annexure-1:
+            | Erection Rate includes GST
+            */
+            $erectionRateWithGST =
+                $categoryErectionRate + $categoryErectionGST;
+
+            /*
+            | Erection Amount = Erection Rate × Category Qty
+            */
+            $erectionAmount =
+                $erectionRateWithGST * $categoryQty;
+
+            /*
+            |--------------------------------------------------------------------------
+            | GST
+            |--------------------------------------------------------------------------
+            |
+            | GST amount also needs to be multiplied by category quantity
+            | because the total amount is quantity based.
+            |
+            */
+
+            $supplyGSTAmount =
+                $categorySupplyGST * $categoryQty;
+
+            $erectionGSTAmount =
+                $categoryErectionGST * $categoryQty;
+
+            /*
+            |--------------------------------------------------------------------------
+            | Totals
+            |--------------------------------------------------------------------------
+            */
+
+            $totalSupplyRate += $supplyRateWithGST;
+            $totalSupplyAmount += $supplyAmount;
+            $totalSupplyGST += $supplyGSTAmount;
+
+            $totalErectionRate += $erectionRateWithGST;
+            $totalErectionAmount += $erectionAmount;
+            $totalErectionGST += $erectionGSTAmount;
+
+            /*
+            |--------------------------------------------------------------------------
+            | Category Result
+            |--------------------------------------------------------------------------
+            */
+
+            $calculatedItems[] = [
+                'project_category_id' => $categoryId,
+
+                'category_name' =>
+                    $firstItem->projectcategries->name
+                    ?? 'General Category',
+
+                'unit' =>
+                    $firstItem->projectcategries->unit
+                    ?? $firstItem->unit
+                    ?? 'SET',
+
+                'category_qty' => $categoryQty,
+
+                'supply_rate' => round($supplyRateWithGST, 2),
+
+                'supply_amount' => round($supplyAmount, 2),
+
+                'supply_gst_amount' => round($supplyGSTAmount, 2),
+
+                'erection_rate' => round($erectionRateWithGST, 2),
+
+                'erection_amount' => round($erectionAmount, 2),
+
+                'erection_gst_amount' => round($erectionGSTAmount, 2),
+
+                'items' => $items->values(),
+            ];
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Overall Totals
+        |--------------------------------------------------------------------------
+        */
+
+        $overallGrandTotal =
+            $totalSupplyAmount + $totalErectionAmount;
+
+        /*
+        |--------------------------------------------------------------------------
+        | Add calculated data to quotation response
+        |--------------------------------------------------------------------------
+        */
+
+        $quotation->calculated_summary = [
+            'items' => $calculatedItems,
+
+            'supply' => [
+                'rate' => round($totalSupplyRate, 2),
+                'amount' => round($totalSupplyAmount, 2),
+                'gst' => round($totalSupplyGST, 2),
+            ],
+
+            'erection' => [
+                'rate' => round($totalErectionRate, 2),
+                'amount' => round($totalErectionAmount, 2),
+                'gst' => round($totalErectionGST, 2),
+            ],
+
+            'grand_total' => round($overallGrandTotal, 2),
+        ];
+
+        return response()->json([
+            'status' => true,
+            'data' => $quotation
+        ]);
+    }
 
     public function print($id)
     {
@@ -814,6 +1073,10 @@ public function update(Request $request, $id)
 //         'data' => $newQuotation
 //     ]);
 // }
+
+
+public function export($id)
+{ $quotation = Quotation::find($id); if (!$quotation) { return response()->json([ 'status' => false, 'message' => 'Quotation not found', ], 404); } /* * Safe filename */ $quotationNo = $quotation->quotation_no ?? 'quotation'; /* * Remove unsafe filename characters */ $quotationNo = preg_replace( '/[^A-Za-z0-9\-_]/', '-', $quotationNo ); $fileName = 'quotation-' . $quotationNo . '.xlsx'; return Excel::download( new QuotationExport($quotation), $fileName ); }
 
 public function revision(Request $request, $id)
 {

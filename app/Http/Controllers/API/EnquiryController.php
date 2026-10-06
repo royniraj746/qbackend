@@ -33,6 +33,10 @@ class EnquiryController extends Controller
             'business_name'      => 'nullable|string|max:255',
             'business_category'  => 'nullable|string|max:255',
 
+            'ref'  => 'nullable|string|max:250',
+            'worksite'  => 'nullable|string|max:250',
+
+
             'gst_number'         => 'nullable|string|max:20',
             'pan_number'         => 'nullable|string|max:20',
             'adhar_number'       => 'nullable|string|max:20',
@@ -88,6 +92,8 @@ class EnquiryController extends Controller
                 'business_name'     => $validated['business_name'] ?? null,
                 'business_category' => $validated['business_category'] ?? null,
 
+
+
                 'gst_number'        => $validated['gst_number'] ?? null,
                 'pan_number'        => $validated['pan_number'] ?? null,
                 'adhar_number'      => $validated['adhar_number'] ?? null,
@@ -109,6 +115,8 @@ class EnquiryController extends Controller
             'lead_source'         => $validated['lead_source'] ?? null,
             'status'              => "Unquoted",
             'remarks'             => $validated['remarks'] ?? null,
+            'ref'     => $validated['ref'] ?? null,
+'worksite'     => $validated['worksite'] ?? null,
             'enquiry_customer_id' => $customer->id,
             'created_by'          => auth()->id(),
         ]);
@@ -130,112 +138,6 @@ class EnquiryController extends Controller
     }
 }
 
-// public function store(Request $request)
-// {
-//     DB::beginTransaction();
-
-//     try {
-
-//         /* ---------------- VALIDATION ---------------- */
-//         $validated = $request->validate([
-//             'customer_name'      => 'required|string|max:255',
-//             // 'mobile'             => 'required|digits:10',
-//             'mobile'             => 'nullable|digits:10',
-//             'email'              => 'nullable|email',
-//             'business_name'      => 'nullable|string|max:255',
-//             'business_category'  => 'nullable|string|max:255',
-
-//             'gst_number'         => 'nullable|string|max:20',
-//             'pan_number'         => 'nullable|string|max:20',
-//             'adhar_number'       => 'nullable|string|max:20',
-
-//             'address'            => 'nullable|string',
-//             'city'               => 'nullable|string|max:100',
-//             'state'              => 'nullable|string|max:100',
-//             'pincode'            => 'nullable|string|max:10',
-//             'country'            => 'nullable|string|max:100',
-
-//             'enquiry_type'       => 'required|string|max:100',
-//             'lead_source'        => 'nullable|string|max:100',
-//             'status'             => 'nullable|string|max:50',
-//             'remarks'            => 'nullable|string',
-//         ]);
-// Log::info("auth()->id()",[auth()]);
-//         /* ---------------- CUSTOMER ---------------- */
-//         $customer = EnquiryCustomer::where('mobile', $validated['mobile'])->first();
-
-//         if ($customer) {
-//             // ✅ Update existing customer
-//             $customer->update([
-//                 'customer_name'     => $validated['customer_name'],
-//                 'email'             => $validated['email'] ?? null,
-//                 'business_name'     => $validated['business_name'] ?? null,
-//                 'business_category' => $validated['business_category'] ?? null,
-
-//                 'gst_number'        => $validated['gst_number'] ?? null,
-//                 'pan_number'        => $validated['pan_number'] ?? null,
-//                 'adhar_number'      => $validated['adhar_number'] ?? null,
-
-//                 'address'           => $validated['address'] ?? null,
-//                 'city'              => $validated['city'] ?? null,
-//                 'state'             => $validated['state'] ?? null,
-//                 'pincode'           => $validated['pincode'] ?? null,
-//                 'country'           => $validated['country'] ?? 'India',
-
-//                 'created_by'        => auth()->id(),
-//             ]);
-//         } else {
-//             // ✅ Create new customer
-//             $customer = EnquiryCustomer::create([
-//                 'customer_name'     => $validated['customer_name'],
-//                 'mobile'            => $validated['mobile'],
-//                 'email'             => $validated['email'] ?? null,
-//                 'business_name'     => $validated['business_name'] ?? null,
-//                 'business_category' => $validated['business_category'] ?? null,
-
-//                 'gst_number'        => $validated['gst_number'] ?? null,
-//                 'pan_number'        => $validated['pan_number'] ?? null,
-//                 'adhar_number'      => $validated['adhar_number'] ?? null,
-
-//                 'address'           => $validated['address'] ?? null,
-//                 'city'              => $validated['city'] ?? null,
-//                 'state'             => $validated['state'] ?? null,
-//                 'pincode'           => $validated['pincode'] ?? null,
-//                 'country'           => $validated['country'] ?? 'India',
-
-//                 'created_by'        => auth()->id(),
-//             ]);
-//         }
-
-//         /* ---------------- ENQUIRY ---------------- */
-//         $enquiry = Enquiry::create([
-//             'enquiry_code'        => 'ENQ-' . strtoupper(uniqid()),
-//             'enquiry_type'        => $validated['enquiry_type'],
-//             'lead_source'         => $validated['lead_source'] ?? null,
-//             // 'status'              => $validated['status'] ?? "Unquoted",
-//             'status'              => "Unquoted",
-//             'remarks'             => $validated['remarks'] ?? null,
-//             'enquiry_customer_id' => $customer->id,
-
-//             'created_by'        => auth()->id(),
-//         ]);
-
-//         DB::commit();
-
-//         return response()->json([
-//             'message'  => 'Enquiry created successfully',
-//             'enquiry'  => $enquiry,
-//             'customer' => $customer
-//         ], 201);
-
-//     } catch (\Exception $e) {
-//         DB::rollBack();
-//         return response()->json([
-//             'error' => 'Something went wrong',
-//             'debug' => $e->getMessage()
-//         ], 500);
-//     }
-// }
 
 
 public function update(Request $request, $id)
@@ -264,6 +166,9 @@ public function update(Request $request, $id)
             'lead_source'        => 'nullable|string|max:100',
             'status'             => 'required|string|max:50',
             'remarks'            => 'nullable|string',
+            'worksite'            => 'nullable|string',
+            'ref'            => 'nullable|string',
+
         ]);
 
         $enquiry = Enquiry::with('enquirycustomer')->findOrFail($id);
@@ -274,6 +179,8 @@ public function update(Request $request, $id)
             'email'             => $validated['email'] ?? null,
             'business_name'     => $validated['business_name'] ?? null,
             'business_category' => $validated['business_category'] ?? null,
+
+
 
             'gst_number'        => $validated['gst_number'] ?? null,
             'pan_number'        => $validated['pan_number'] ?? null,
@@ -292,6 +199,8 @@ public function update(Request $request, $id)
             'lead_source'  => $validated['lead_source'] ?? null,
             'status'       => $validated['status'],
             'remarks'      => $validated['remarks'] ?? null,
+            'worksite' => $validated['worksite'] ?? null,
+            'ref' => $validated['ref'] ?? null,
             'created_by'   => auth()->id(),
         ]);
 

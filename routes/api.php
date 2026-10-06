@@ -23,8 +23,15 @@ Route::post('/logout', [AuthController::class, 'logout']);
 Route::middleware('auth:sanctum')->group(function () {
     // Route::post('/logout', [AuthController::class, 'logout']);
 Route::get('/me' ,[authController::class, 'me']);
-Route::apiResource('project-categories', ProjectCategoryController::class);
+// Route::apiResource('project-categories', ProjectCategoryController::class);
 
+Route::get('/project-categories', [ProjectCategoryController::class, 'index']);
+
+Route::post('/project-categories', [ProjectCategoryController::class, 'store']);
+
+Route::put('/project-categories/{id}', [ProjectCategoryController::class, 'update']);
+
+Route::delete('/project-categories/{id}', [ProjectCategoryController::class, 'destroy']);
 });
 
 // Route::get('/dashboard', [DashboardController::class, 'index'])
@@ -85,11 +92,48 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::post('/register', [AuthController::class, 'register']);
 //terma and condtion
-Route::get('/admin/terms',[TermConditionController::class,'index']);
+// Route::get('/admin/terms',[TermConditionController::class,'index']);
 
-    Route::post('/admin/terms',[TermConditionController::class,'store']);
+//     Route::post('/admin/terms',[TermConditionController::class,'store']);
 
-    Route::put('/admin/terms/{id}',[TermConditionController::class,'update']);
+//     Route::put('/admin/terms/{id}',[TermConditionController::class,'update']);
+
+
+
+
+Route::prefix('admin/terms')->group(function () {
+
+    Route::get('/', [
+        TermConditionController::class,
+        'index'
+    ]);
+
+    Route::post('/', [
+        TermConditionController::class,
+        'store'
+    ]);
+
+    Route::get('/active', [
+        TermConditionController::class,
+        'active'
+    ]);
+
+    Route::get('/{id}', [
+        TermConditionController::class,
+        'show'
+    ]);
+
+    Route::put('/{id}', [
+        TermConditionController::class,
+        'update'
+    ]);
+
+    Route::delete('/{id}', [
+        TermConditionController::class,
+        'destroy'
+    ]);
+});
+
 
 
 
@@ -98,11 +142,16 @@ Route::get('/admin/terms',[TermConditionController::class,'index']);
 Route::apiResource('notes', NoteController::class);
     // Route::put('/quotations/{id}/update', [QuotationController::class, 'update']);
 Route::post('/quotations/{id}/revision', [QuotationController::class, 'revision']);
-    //quotation routes
-
+Route::patch(
+    '/quotations/{quotation}/term-condition',
+    [QuotationController::class, 'updateTermCondition']
+);
+    //quotation routes showerection
+    Route::get( '/quotations/{id}/export', [QuotationController::class, 'export'] )->name('quotations.export');
 Route::get('/quotations',[QuotationController::class,'index']);
 Route::post('/quotations',[QuotationController::class,'store']);
 Route::get('/quotations/{id}',[QuotationController::class,'show']);
+Route::get('/quotations-erection/{id}',[QuotationController::class,'showerection']);
 // Route::get('/quotations/{id}/print',[QuotationController::class,'print']);
 //gst route here
 Route::apiResource('gsts', GstController::class);
@@ -125,4 +174,4 @@ Route::get('/quotations/{id}/excel', [QuotationController::class, 'excel']);
 Route::middleware(['auth:sanctum', 'role:user'])->get('/user/dashboard', function () {
     return 'User Dashboard';
 });
-Route::get('/terms',[TermConditionController::class,'show']);
+// Route::get('/terms',[TermConditionController::class,'show']);

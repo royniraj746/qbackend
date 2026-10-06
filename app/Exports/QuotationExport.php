@@ -20,6 +20,7 @@ class QuotationExport implements WithMultipleSheets
     public function sheets(): array
     {
         return [
+            new Sheets\CoverPageSheet($this->quotation),
             new Sheets\QuotationSummarySheet($this->quotation),
             new Sheets\QuotationItemsSheet($this->quotation),
             new Sheets\QuotationCategorySheet($this->quotation),

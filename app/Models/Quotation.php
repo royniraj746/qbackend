@@ -60,7 +60,8 @@ class Quotation extends Model
 
         'created_by',
         'rev',
-        'erection_total'
+        'erection_total',
+        'term_conditions_id'
     ];
 
     public function items() {
@@ -79,5 +80,15 @@ class Quotation extends Model
     }
     public function createdBy(){
         return $this->belongsTo(User::class,'created_by');
+    }
+
+
+    //new
+    public function termCondition()
+    {
+        return $this->belongsTo(
+            TermCondition::class,
+            'term_conditions_id'
+        );
     }
 }

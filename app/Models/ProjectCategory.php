@@ -21,4 +21,13 @@ class ProjectCategory extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+    public function products()
+{
+    return $this->belongsToMany(
+        Product::class,
+        'project_category_products',
+        'project_category_id',
+        'product_id'
+    );
+}
 }
